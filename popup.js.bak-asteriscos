@@ -1,0 +1,264 @@
+(function () {
+  'use strict';
+
+  function sendToBg(msg, cb) {
+    try {
+      const p = chrome.runtime.sendMessage(msg, function (resp) {
+        if (chrome.runtime.lastError) {
+          chrome.runtime.lastError = null;
+          if (cb) cb(undefined);
+          return;
+        }
+        if (cb) cb(resp);
+      });
+      if (p && typeof p.catch === 'function') p.catch(function () {});
+      return p;
+    } catch (e) {
+      if (cb) setTimeout(function () { cb(undefined); }, 0);
+    }
+  }
+
+  function $(sel) { return document.querySelector(sel); }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function copyText(text, btn) {
+    const done = function () {
+      if (!btn) return;
+      const old = btn.textContent;
+      btn.textContent = 'Copiado ✓';
+      setTimeout(function () { btn.textContent = old; }, 1200);
+    };
+    const fallback = function () {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        done();
+      } catch (e) { /* sem clipboard */ }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  function neText(m) {
+    const ne = (m && m.neList) ? m.neList.slice() : [];
+    if (!ne.length && m && m.items) {
+      m.items.forEach(function (e) {
+        (e.sites || []).forEach(function (s) { if (ne.indexOf(s) < 0) ne.push(s); });
+      });
+    }
+    if (!ne.length && m && m.endList) return m.endList.join('\n');
+    return ne.sort().join('\n');
+  }
+
+  function diag(cls, html) {
+    const box = $('#diag');
+    box.className = 'diag ' + cls;
+    box.innerHTML = html;
+  }
+
+  function fmtAnfs(list) {
+    if (!list || !list.length) return '—';
+    return list.map(function (a) { return a.anf + ' (' + (a.ends != null ? a.ends : a.nes) + ')'; }).join(', ');
+  }
+
+  function isRecent(it, maxAgeMs) {
+    const m = String(it.horario || '').trim().match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+    if (!m) return true;
+    const now = new Date();
+    const d = new Date(now.getFullYear(), parseInt(m[2], 10) - 1, parseInt(m[1], 10), parseInt(m[3], 10), parseInt(m[4], 10));
+    if (isNaN(d.getTime())) return true;
+    if (d.getTime() - now.getTime() > 86400000) d.setFullYear(d.getFullYear() - 1);
+    return (Date.now() - d.getTime()) <= (maxAgeMs || 86400000);
+  }
+
+  function buildDiag(li) {
+    const hr = li.horario || {};
+    const ends = li.endsFora != null ? li.endsFora : li.neFora;
+    let h = '<div class="diag-top"><b>Diagnóstico:</b> regional=' + esc(li.regionals) +
+      ' | fonte: ' + esc(li.fonte) + '</div>';
+    h += '<div class="diag-line">Sites fora (24h): <b>' + ends + '</b> end_ids · ' +
+      (li.linhas != null ? li.linhas : li.totalSites) + ' linhas</div>';
+    if (li.anfs && li.anfs.length) {
+      h += '<div class="diag-line">ANFs: ' + esc(fmtAnfs(li.anfs)) + '</div>';
+    }
+    if (hr.min && hr.max) {
+      h += '<div class="diag-line">Horário: <b>' + esc(hr.min) + ' – ' + esc(hr.max) + '</b></div>';
+    }
+    (li.porRegional || []).forEach(function (p) {
+      const endsR = p.ends != null ? p.ends : p.ne;
+      h += '<div class="diag-line diag-sub">▶ ' + esc(p.regional) + ' → ' + endsR + ' sites / ' + p.sites +
+        ' linhas / ANFs ' + esc(fmtAnfs(p.anfs)) +
+        (p.horario && p.horario.min ? ' / H ' + esc(p.horario.min) + '–' + esc(p.horario.max) : '') +
+        '</div>';
+    });
+    return h;
+  }
+
+  function endLabel(e) {
+    const tech = (e.techs && e.techs.length) ? ' ' + e.techs.join('/') : '';
+    return e.end_id + tech + ' · ANF ' + (e.anf || '?') + ' · ' + (e.cidade || '?') + ' · ' + (e.horario || '?');
+  }
+
+  function renderDiff(diff) {
+    const el = $('#last-diff');
+    if (!diff || (!diff.fallen && !diff.normalized)) {
+      el.innerHTML = '<div class="empty">Sem mudanças registradas ainda.</div>';
+      return;
+    }
+    const f = (diff.fallen || []).filter(function (it) { return isRecent(it); });
+    const n = (diff.normalized || []).filter(function (it) { return isRecent(it); });
+    let h = '<div class="rowcount down">🔴 CAÍRAM: ' + f.length + ' site(s)</div>';
+    h += '<div class="rowcount up">🟢 NORMALIZARAM: ' + n.length + ' site(s)</div>';
+
+    function list(items, cls2) {
+      if (!items.length) return '';
+      let s = '<ul class="mini">';
+      const max = 14;
+      for (let i = 0; i < items.length && i < max; i++) {
+        s += '<li class="' + cls2 + '">' + esc(endLabel(items[i])) + '</li>';
+      }
+      if (items.length > max) s += '<li class="' + cls2 + '">… +' + (items.length - max) + '</li>';
+      return s + '</ul>';
+    }
+    h += list(f, 'down');
+    h += list(n, 'up');
+    el.innerHTML = h;
+  }
+
+  function renderMassivas(massivas, dismissedMIds) {
+    const el = $('#massivas');
+    const active = massivas.filter(function (m) { return dismissedMIds.indexOf(m.id) < 0; });
+    if (!active.length) {
+      el.innerHTML = '<div class="empty">Nenhuma massiva ativa.</div>';
+      return;
+    }
+    let h = '';
+    active.forEach(function (m) {
+      const d = new Date(m.time);
+      const onde = m.groupBy === 'anf' ? 'ANF ' + m.group
+        : (m.groupBy === 'cidade' ? m.group : (m.neList ? m.neList.length : m.count) + ' NE_IDs');
+      h += '<div class="massa">' +
+        '<div><b>' + esc(m.title || ('Massiva ANF' + m.group + ' -  - (' + m.count + ' sites afetados)')) + '</b>' +
+        '<div class="m-sub">' + (m.primeiraCausa ? esc(m.primeiraCausa) + ' · ' : '') + esc(d.toLocaleString()) + '</div>' +
+        '</div><div class="m-acts">' +
+        '<button class="btn small" data-copy="' + esc(m.id) + '" title="Copiar todos os NE_IDs desta massiva">📋 NEs</button>' +
+        '<button class="btn small" data-id="' + esc(m.id) + '">Descartar</button>' +
+        '</div></div>';
+    });
+    el.innerHTML = h;
+  }
+
+  function renderHistory(h) {
+    const el = $('#history');
+    if (!h || !h.length) {
+      el.innerHTML = '<div class="empty">Sem histórico.</div>';
+      return;
+    }
+    let s = '';
+    h.slice(0, 12).forEach(function (e) {
+      const t = String(e.time).replace('T', ' ').slice(0, 19);
+      s += '<div class="his"><span>' + esc(t) + '</span> <b>🔴' + e.fallen + '</b> <b style="color:#9be4a3">🟢' + e.normalized + '</b>' +
+        (e.massivas ? ' <b style="color:#ffb4be">⚠️' + e.massivas + '</b>' : '') + ' <i>' + esc(e.fonte || '') + '</i></div>';
+    });
+    el.innerHTML = s;
+  }
+
+  let lastState = null;
+
+  function render(st) {
+    lastState = st;
+    $('#btn-alerts').textContent = st.toastsEnabled ? '🔔 Alertas' : '🔕 Alertas';
+    $('#btn-alerts').classList.toggle('off', !st.toastsEnabled);
+
+    $('#mon-status').textContent = st.monitoring ? 'MONITORANDO' : 'PAUSADO';
+    $('#mon-status').className = 'pill ' + (st.monitoring ? 'on' : 'off');
+    $('#btn-monitor').textContent = st.monitoring ? 'Pausar' : 'Retomar';
+    $('#btn-monitor').classList.toggle('off', !st.monitoring);
+
+    const li = st.lastInfo;
+    $('#st-sites').textContent = li ? (li.endsFora != null ? li.endsFora : li.neFora) : '0';
+    $('#st-ne').textContent = li ? (li.linhas != null ? li.linhas : li.totalSites) : '0';
+    const activeM = (st.massivas || []).filter(function (m) { return (st.dismissedMIds || []).indexOf(m.id) < 0; }).length;
+    $('#st-mas').textContent = activeM;
+
+    if (st.lastError) {
+      diag('err', 'Erro: ' + esc(st.lastError));
+    } else if (li && li.time) {
+      diag('info', buildDiag(li));
+    } else {
+      diag('hint', 'Nenhuma verificação ainda. Clique em "Verificar agora".');
+    }
+
+    renderDiff(st.lastDiff);
+    renderMassivas(st.massivas || [], st.dismissedMIds || []);
+    renderHistory(st.history || []);
+
+    $('#foot').textContent = 'Última verificação: ' + (st.lastCheck ? String(st.lastCheck).replace('T', ' ').slice(0, 19) : '—') +
+      ' · baseline: ' + (st.prevEndsCount != null ? st.prevEndsCount : st.globalPrevItemsCount) + ' sites';
+  }
+
+  function refresh() {
+    sendToBg({ type: 'GET_STATUS' }, function (st) {
+      if (!st) {
+        diag('err', 'Sem resposta do background (service worker iniciando). Tente de novo.');
+        return;
+      }
+      render(st);
+    });
+  }
+
+  $('#btn-alerts').addEventListener('click', function () {
+    sendToBg({ type: 'TOGGLE_TOAST' }, refresh);
+  });
+  $('#btn-monitor').addEventListener('click', function () {
+    sendToBg({ type: 'TOGGLE_MONITORING' }, refresh);
+  });
+  $('#btn-check').addEventListener('click', function () {
+    const b = $('#btn-check');
+    b.disabled = true;
+    b.textContent = 'Verificando…';
+    sendToBg({ type: 'FORCE_CHECK' }, function () {
+      b.disabled = false;
+      b.textContent = 'Verificar agora';
+      refresh();
+    });
+  });
+  $('#btn-clear').addEventListener('click', function () {
+    sendToBg({ type: 'CLEAR_EVENTS' }, refresh);
+  });
+
+  $('#massivas').addEventListener('click', function (e) {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.copy) {
+      const m = ((lastState && lastState.massivas) || []).filter(function (x) { return x.id === b.dataset.copy; })[0];
+      if (m) copyText(neText(m), b);
+      return;
+    }
+    if (b.dataset.id) sendToBg({ type: 'DISMISS_MASSIVA', id: b.dataset.id }, refresh);
+  });
+
+  chrome.runtime.onMessage.addListener(function (msg) {
+    if (msg && msg.type === 'CHECK_COMPLETE') setTimeout(refresh, 200);
+  });
+
+  window.addEventListener('error', function (e) {
+    diag('err', 'Erro (UI): ' + esc((e && e.message) ? e.message : String(e)));
+  });
+
+  refresh();
+})();

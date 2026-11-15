@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Monitor Genesis</title>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body class="popup-view">
+  <header>
+    <div class="brand"><img src="brand-tlp.png" alt="TLP" width="40" height="18"><div><div class="title">Monitor Genesis</div><div class="brand-sub">PORTAL TLP · MASSIVAS</div></div></div>
+    <button id="btn-alerts" class="btn small" title="Liga/desliga janela de aviso e notificações">🔔 Alertas</button>
+  </header>
+
+  <section class="status-bar">
+    <span id="mon-status" class="pill">—</span>
+    <button id="btn-monitor" class="btn small">Pausar</button>
+    <button id="btn-check" class="btn small primary">Verificar agora</button>
+    <button id="btn-clear" class="btn small danger">Limpar</button>
+  </section>
+
+  <section id="diag" class="diag hidden"></section>
+
+  <section class="stats">
+    <div class="stat"><b id="st-sites">0</b><span>Sites (end_id)</span></div>
+    <div class="stat"><b id="st-ne">0</b><span>Linhas</span></div>
+    <div class="stat"><b id="st-mas">0</b><span>Massivas</span></div>
+  </section>
+
+  <section class="block">
+    <h3>Última mudança</h3>
+    <div id="last-diff" class="diff"></div>
+  </section>
+
+  <section class="block">
+    <h3>Massivas ativas</h3>
+    <div id="massivas" class="list"></div>
+  </section>
+
+  <section class="block">
+    <h3>Histórico</h3>
+    <div id="history" class="list"></div>
+  </section>
+
+  <footer id="foot"></footer>
+  <script src="popup.js"></script>
+<footer class="brand-footer" aria-label="Informações do desenvolvedor">
+  <div class="developer-row"><span class="adapt-badge">ADAPTAÇÃO</span><div>Adaptado por <strong>Cleverson Renan</strong><br><a href="mailto:cleversonrenan@gmail.com">cleversonrenan@gmail.com</a></div></div>
+  <div class="footer-product">MONITOR GENESIS · 2026</div>
+  <div class="footer-license">Tema do <a href="https://cleversonrenan.github.io/bater_backlog/index.html" target="_blank" rel="noopener noreferrer">Testador de Alarmes</a>, sob licença <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0 1.0 Universal</a>. <span aria-label="Creative Commons Zero">Ⓒ ⓪</span></div>
+</footer>
+
+</body>
+</html>

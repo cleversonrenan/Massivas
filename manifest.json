@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Monitor Genesis",
+  "version": "1.2.0",
+  "description": "Monitora o painel de quedas, detecta sites (end_id) caindo juntos e avisa quedas, massivas e normalizações.",
+  "permissions": [
+    "storage",
+    "notifications",
+    "alarms",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://10.174.221.60/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Monitor Genesis",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://10.174.221.60/operations/analisys/painel_online_peso.php*",
+        "http://10.174.231.236/domus/genesis/online*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Monitor Genesis — Configurações</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font: 14px/1.5 'Segoe UI', Arial, sans-serif; background: #12161f; color: #e8eaf0; padding: 24px; max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 18px; margin-bottom: 18px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #8b96ab; margin: 22px 0 8px; }
+  label { display: block; margin-bottom: 14px; }
+  label .hint { display: block; font-size: 11px; color: #6b7689; margin-top: 2px; }
+  input[type=text], input[type=number], select {
+    width: 100%; margin-top: 4px; padding: 7px 10px;
+    background: #1a2029; color: #e8eaf0; border: 1px solid #3a4356; border-radius: 6px;
+    font-size: 13px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  label.chk { display: flex; align-items: center; gap: 8px; }
+  .actions { margin-top: 20px; display: flex; align-items: center; gap: 10px; }
+  button {
+    border: 1px solid #3a4356; background: #232a3a; color: #e8eaf0;
+    border-radius: 6px; padding: 8px 18px; cursor: pointer; font-size: 13px;
+  }
+  button.primary { background: #1f6feb; border-color: #1f6feb; }
+  .saved { color: #9be4a3; font-size: 13px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <h1>⚙️ Configurações — Monitor Genesis</h1>
+
+  <label>Regionais (separar por vírgula)
+    <input id="regionals" type="text" placeholder="TRJ,TRG,TRP" value="TRJ">
+    <span class="hint">O monitor busca o painel para cada regional listada.</span>
+  </label>
+
+  <div class="row2">
+    <label>Intervalo de verificação (minutos)
+      <input id="interval" type="number" min="1" value="10">
+    </label>
+    <label>Idade máxima para valer como massiva (dias)
+      <input id="mMaxDays" type="number" min="1" value="10">
+    </label>
+  </div>
+
+  <h2>Massiva (NE_IDs caindo juntos)</h2>
+
+  <div class="row2">
+    <label>Agrupar por
+      <select id="mGroup">
+        
+        <option value="anf">ANF</option>
+        
+      </select>
+      <span class="hint">Agrupa pela ANF numérica do Domus. Cada NE_ID distinto conta como um site.</span>
+    </label>
+    <label>Janela de tempo (minutos)
+      <input id="mWindow" type="number" min="1" value="10">
+    </label>
+  </div>
+
+  <label>Mínimo de sites (NE_IDs distintos na janela)
+    <input id="mThreshold" type="number" min="2" value="5">
+  </label>
+
+  <h2>Alertas</h2>
+
+  <label class="chk">
+    <input id="notifications" type="checkbox"> Notificações nativas
+  </label>
+  <label class="chk">
+    <input id="notifyFallen" type="checkbox"> Avisar cada site que caiu (quando não houver massiva)
+  </label>
+  <label class="chk">
+    <input id="notifyNormalized" type="checkbox"> Avisar cada site que normalizou
+  </label>
+
+  <label>URL base do painel
+    <input id="baseUrl" type="text" value="http://10.174.231.236/domus/genesis/online">
+    <span class="hint">Se trocar de host, adicione a origem em host_permissions no manifest.json.</span>
+  </label>
+
+  <div class="actions">
+    <button id="save" class="primary">Salvar</button>
+    <span id="saved" class="saved hidden">Salvo ✓</span>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
+
